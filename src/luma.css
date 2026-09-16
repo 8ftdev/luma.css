@@ -1,0 +1,39 @@
+.luma-host { isolation: isolate; }
+.luma-positioned { position: relative; }
+.luma-effect {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  display: block;
+  border-radius: inherit;
+  overflow: hidden;
+  pointer-events: none;
+  user-select: none;
+  opacity: 0;
+}
+.luma-effect::before,
+.luma-effect::after {
+  content: "";
+  position: absolute;
+  pointer-events: none;
+}
+.luma-effect::before {
+  top: 0;
+  left: 0;
+  width: calc(var(--luma-radius) + var(--luma-radius));
+  height: calc(var(--luma-radius) + var(--luma-radius));
+  background: radial-gradient(circle closest-side in oklab, rgb(var(--luma-color, 255 255 255) / 1), rgb(var(--luma-color, 255 255 255) / .5) 40%, rgb(var(--luma-color, 255 255 255) / .12) 70%, transparent);
+  transform: translate(calc(var(--luma-x) - var(--luma-radius)), calc(var(--luma-y) - var(--luma-radius)));
+  opacity: clamp(0, calc(var(--luma-surface, .075) * var(--luma-gain)), 1);
+}
+.luma-effect::after {
+  inset: 0;
+  padding: var(--luma-border, 1px);
+  border-radius: inherit;
+  background: radial-gradient(circle var(--luma-radius) at var(--luma-x) var(--luma-y) in oklab, rgb(var(--luma-color, 255 255 255)), transparent);
+  opacity: clamp(0, calc(var(--luma-edge, .38) * var(--luma-gain)), 1);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+}

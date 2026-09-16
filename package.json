@@ -1,0 +1,27 @@
+{
+	"name": "luma-light",
+	"version": "0.1.0",
+	"private": true,
+	"type": "module",
+	"description": "Tiny shared lighting for elevated DOM surfaces",
+	"exports": {
+		".": {
+			"types": "./src/luma.d.ts",
+			"default": "./dist/luma.js"
+		},
+		"./style.css": "./dist/luma.css"
+	},
+	"files": [
+		"dist",
+		"src/luma.d.ts"
+	],
+	"scripts": {
+		"build": "bun scripts/build.js",
+		"dev": "bun scripts/serve.js",
+		"test": "bun test"
+	},
+	"engines": {
+		"bun": ">=1.4.0"
+	},
+	"packageManager": "bun@1.4.2"
+}
