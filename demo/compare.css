@@ -1,0 +1,10 @@
+/* Development-only reference renderer. Never included in the library bundle. */
+.paint-reference .luma-effect::before {
+  will-change: auto;
+  filter: none;
+  inset: 0;
+  width: auto;
+  height: auto;
+  transform: none;
+  background: radial-gradient(circle var(--luma-radius) at var(--luma-x) var(--luma-y) in oklab, rgb(var(--luma-color, 255 255 255)), rgb(var(--luma-color, 255 255 255) / .5) 40%, rgb(var(--luma-color, 255 255 255) / .12) 70%, transparent);
+}

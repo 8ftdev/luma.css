@@ -1,0 +1,50 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>Luma browser checks</title>
+<link rel="stylesheet" href="../src/luma.css">
+<style>body{font:16px system-ui;margin:24px;background:#151619;color:#fff}#results{position:absolute;left:400px;top:24px}.fixture{position:relative;width:300px;height:160px;margin:30px;border-radius:16px;background:#24262c}.inner{position:absolute;left:30px;top:30px;width:120px;height:80px;background:#30333a;border-radius:12px}#scroller{height:240px;overflow:auto}.spacer{height:450px}li{margin:8px}</style>
+<h1>Luma browser checks</h1><ol id="results"></ol><main id="fixtures"><div class="fixture" data-luma="1" id="card"><div class="inner" data-luma="2" id="inner">Nested content</div></div><div id="scroller"><div class="spacer"></div><div class="fixture" data-luma="1" id="scrolled"></div></div></main>
+<script type="module">
+import { createLuma } from '../src/luma.js';
+const results=document.querySelector('#results'), root=document.querySelector('#fixtures'), card=document.querySelector('#card');
+const frame=()=>new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));
+let failed=0, passed=0;
+function check(name, fn){let li=document.createElement('li');try{fn();li.textContent='PASS — '+name;passed++}catch(e){li.textContent='FAIL — '+name+': '+e.message;failed++}results.append(li)}
+const assert=(condition,message='assertion failed')=>{if(!condition)throw Error(message)};
+const effect=el=>el.querySelector(':scope > .luma-effect');
+const value=(el,key)=>parseFloat(effect(el)?.style.getPropertyValue('--luma-'+key));
+document.querySelector('#scroller').scrollTop=0;
+let c=createLuma({root, light:{x:180,y:180,z:240}});
+await frame();
+check('registers one decorative helper per surface',()=>assert(root.querySelectorAll('.luma-effect').length===3));
+check('preserves host overflow',()=>assert(getComputedStyle(card).overflow==='visible'));
+check('nested elevation strengthens its independent response',()=>assert(value(document.querySelector('#inner'),'gain')>value(card,'gain')));
+check('surface glow paints at native size with high-precision interpolation',()=>{let helper=effect(card),original=helper.style.getPropertyValue('--luma-radius');helper.style.setProperty('--luma-radius','370px');let style=getComputedStyle(helper,'::before'),width=parseFloat(style.width),matrix=new DOMMatrixReadOnly(style.transform),background=style.backgroundImage;helper.style.setProperty('--luma-radius',original);assert(Math.abs(width-740)<.1,'gradient texture is scaled instead of painted at native size');assert(Math.abs(matrix.a-1)<.001&&Math.abs(matrix.d-1)<.001,'surface transform still scales the texture');assert(background.includes('oklab'),'surface gradient is using low-precision interpolation')});
+c.setLight({x:0,y:0}); c.setLight({x:200,y:250}); await frame();
+check('latest light point aligns with the actual helper origin',()=>{let r=effect(card).getBoundingClientRect();assert(Math.abs(value(card,'x')+r.left+scrollX-200)<0.1);assert(Math.abs(value(card,'y')+r.top+scrollY-250)<0.1)});
+const scroller=document.querySelector('#scroller');scroller.scrollTop=0;await frame();scroller.scrollTop=400;for(let i=0;i<10&&!Number.isFinite(value(document.querySelector('#scrolled'),'y'));i++)await frame();
+check('nested scroll updates local coordinates',()=>{let el=document.querySelector('#scrolled'),r=effect(el).getBoundingClientRect(),actual=value(el,'y')+r.top+scrollY;assert(Math.abs(actual-250)<0.1,`expected 250, got ${actual}`)});
+check('rejects invalid input before updating state',()=>{let threw=false;try{c.setLight({x:NaN})}catch{threw=true}assert(threw)});
+card.style.marginLeft='90px';c.refresh();await frame();
+check('explicit refresh catches position changes',()=>{let r=effect(card).getBoundingClientRect();assert(Math.abs(value(card,'x')+r.left+scrollX-200)<0.1)});
+const fresh=document.createElement('div');fresh.className='fixture';fresh.dataset.luma='2';root.append(fresh);c.refresh();await frame();
+check('refresh registers new cards without duplicates',()=>assert(root.querySelectorAll('.luma-effect').length===4));
+const originalGain=value(card,'gain');c.setLight({intensity:2});await frame();
+check('intensity strengthens the surface response',()=>assert(value(card,'gain')>originalGain));
+c.setLight({intensity:0});await frame();
+check('zero intensity turns off the decorative layer',()=>assert(effect(card).style.opacity==='0'));
+const nativeFrame=window.requestAnimationFrame;let requests=0;
+window.requestAnimationFrame=function(fn){requests++;return nativeFrame.call(window,fn)};
+for(let i=0;i<100;i++)c.setLight({x:i,intensity:1});
+check('100 synchronous light updates schedule only one render frame',()=>assert(requests===1));
+window.requestAnimationFrame=nativeFrame;await frame();
+check('coalescing applies the final point',()=>{let r=effect(card).getBoundingClientRect();assert(Math.abs(value(card,'x')+r.left+scrollX-99)<0.1)});
+if(!matchMedia('(prefers-reduced-motion: reduce)').matches){
+ c.followPointer(true);window.dispatchEvent(new PointerEvent('pointermove',{clientX:120,clientY:100,pointerType:'mouse'}));await frame();
+ check('pointer adapter uses viewport coordinates',()=>{let r=effect(card).getBoundingClientRect();assert(Math.abs(value(card,'x')+r.left-120)<0.1)});
+ c.followPointer(false);
+}
+fresh.remove();c.refresh();await frame();
+c.destroy();c.destroy();await frame();
+check('destroy is idempotent and removes helpers',()=>assert(root.querySelectorAll('.luma-effect').length===0));
+check('destroy preserves application styles',()=>assert(card.style.marginLeft==='90px' && card.className==='fixture'));
+const summary=document.createElement('p');summary.id='summary';summary.textContent=`${passed} passed, ${failed} failed`;results.before(summary);document.title=summary.textContent;
+</script></html>
